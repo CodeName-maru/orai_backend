@@ -96,6 +96,7 @@ public class UserController {
 
         if (isValid) {
             String token = jwtTokenProvider.createToken(user.getUserId(), user.getEmail(), user.getDepartmentId());
+            user.setToken(token);
 
             return new ResponseEntity<>(
                     new CommonResDto<>(HttpStatus.OK, "Mfa validated successfully.", user),
