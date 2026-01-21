@@ -32,9 +32,11 @@ public class DepartmentService {
         return departmentRepository.save(newDepartment);
     }
 
-    // READ - All Departments
+    // READ - All Departments (N+1 문제 방지: parent를 함께 fetch)
     public List<DepartmentResDto> getAllDepartments() {
-        return departmentRepository.findAll().stream().map(DepartmentResDto::new).collect(Collectors.toList());
+        return departmentRepository.findAllWithParent().stream()
+                .map(DepartmentResDto::new)
+                .collect(Collectors.toList());
     }
 
     // READ - Single Department

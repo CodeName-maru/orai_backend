@@ -26,12 +26,12 @@ public class SwaggerConfig {
                 .info(apiInfo())
                 .addSecurityItem(securityRequirement)
                 .components(components)
-                .addServersItem(new Server().url("/user-service"));
+                .addServersItem(new Server().url("/etc-service"));
     }
     private Info apiInfo() {
         return new Info()
-                .title("API Test") // API의 제목
-                .description("Let's practice Swagger UI") // API에 대한 설명
-                .version("1.0.0"); // API의 버전
+                .title("Etc Service API")
+                .description("알림 및 기타 서비스 API")
+                .version("1.0.0");
     }
 }

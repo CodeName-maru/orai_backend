@@ -4,7 +4,8 @@ spring:
     name: chat-service
   cloud:
     config:
-      uri: http://localhost:8888
+      uri: ${CONFIG_SERVER_URL:http://localhost:8888}
       name: chat-service
-  profiles:
-    active: default
+      fail-fast: false
+      enabled: ${CONFIG_ENABLED:false}
+

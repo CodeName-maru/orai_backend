@@ -5,7 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ovengers.calendarservice.client.EtcServiceClient;
 import com.ovengers.calendarservice.client.UserResponseDto;
 import com.ovengers.calendarservice.client.UserServiceClient;
-import com.ovengers.calendarservice.common.auth.TokenUserInfo;
+import com.ovengers.common.auth.TokenUserInfo;
 import com.ovengers.calendarservice.dto.NotificationEvent;
 import com.ovengers.calendarservice.dto.NotificationMessage;
 import com.ovengers.calendarservice.dto.request.ScheduleRequestDto;
@@ -14,7 +14,8 @@ import com.ovengers.calendarservice.entity.Department;
 import com.ovengers.calendarservice.entity.Schedule;
 import com.ovengers.calendarservice.repository.CalendarRepository;
 import com.ovengers.calendarservice.repository.DepartmentRepository;
-import jakarta.transaction.Transactional;
+import com.ovengers.common.domain.DepartmentPrefix;
+import org.springframework.transaction.annotation.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -46,7 +47,8 @@ public class CalendarService {
         // 1. 부서 사용자 목록 조회
         Map<String,String> map = new HashMap<>();
         map.put("departmentId", schedule.getDepartment().getDepartmentId());
-        List<UserResponseDto> departmentUsers = userServiceClient.getUsersToList(map).getResult();
+        @SuppressWarnings("unchecked")
+        List<UserResponseDto> departmentUsers = (List<UserResponseDto>) userServiceClient.getUsersToList(map).getResult();
         List<String> departmentUsersIds = departmentUsers.stream()
                 .map(UserResponseDto::getUserId)
                 .toList();
@@ -79,6 +81,7 @@ public class CalendarService {
     }
 
     // 일정 생성
+    @Transactional
     public ScheduleResponseDto createSchedule(TokenUserInfo userInfo, ScheduleRequestDto scheduleRequestDto) {
         // Department 조회
         Department department = departmentRepository.findById(userInfo.getDepartmentId())
@@ -107,19 +110,16 @@ public class CalendarService {
 
     // departmentId에 따른 type 설정 로직
     private Schedule.Type determineScheduleType(String departmentId) {
-        if (departmentId.startsWith("team")) {
-            return Schedule.Type.TEAM;
-        } else if (departmentId.startsWith("dept")) {
-            return Schedule.Type.GROUP;
-        } else if (departmentId.startsWith("org")) {
-            return Schedule.Type.DIVISION;
-        } else {
-            throw new IllegalArgumentException("잘못된 부서 id 입니다.: " + departmentId);
-        }
-
+        DepartmentPrefix prefix = DepartmentPrefix.fromDepartmentId(departmentId);
+        return switch (prefix) {
+            case TEAM -> Schedule.Type.TEAM;
+            case DEPARTMENT -> Schedule.Type.GROUP;
+            case ORGANIZATION -> Schedule.Type.DIVISION;
+        };
     }
 
     // 전체 일정 조회
+    @Transactional(readOnly = true)
     public List<ScheduleResponseDto> getAllSchedules() {
         return calendarRepository.findAll().stream()
                 .map(this::toDto)
@@ -172,6 +172,7 @@ public class CalendarService {
     }
 
     // 일정 삭제
+    @Transactional
     public void deleteSchedule(String scheduleId) {
         if (!calendarRepository.existsById(scheduleId)) {
             throw new RuntimeException("Schedule not found for ID: " + scheduleId);
@@ -184,6 +185,7 @@ public class CalendarService {
         return null;
     }
 
+    @Transactional(readOnly = true)
     public List<ScheduleResponseDto> getSchedulesForUser(String departmentId) {
 
         // 사용자의 상위 부서 포함한 부서 ID 목록 조회
@@ -203,7 +205,7 @@ public class CalendarService {
 
     private ScheduleResponseDto toDto(Schedule schedule) {
         return ScheduleResponseDto.builder()
-                .ScheduleId(schedule.getScheduleId())
+                .scheduleId(schedule.getScheduleId())
                 .title(schedule.getTitle())
                 .description(schedule.getDescription())
                 .scheduleStatus(schedule.getScheduleStatus())

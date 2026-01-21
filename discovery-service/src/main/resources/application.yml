@@ -5,10 +5,27 @@ spring:
   application:
     name: discovery-service
 
-
-# 유레카 클라이언트 설정 - 자신은 등록에서 제외.
+# 유레카 서버 설정
 eureka:
   client:
+    # 자신은 등록에서 제외
     register-with-eureka: false
     fetch-registry: false
+  server:
+    # Self-preservation 모드 활성화 (네트워크 파티션 시 인스턴스 보호)
+    enable-self-preservation: true
+    # 만료된 인스턴스 제거 주기 (ms)
+    eviction-interval-timer-in-ms: 60000
+    # 응답 캐시 업데이트 주기 (ms)
+    response-cache-update-interval-ms: 30000
 
+# Actuator 설정
+management:
+  endpoints:
+    web:
+      exposure:
+        # 필요한 엔드포인트만 노출
+        include: health, info
+  endpoint:
+    health:
+      show-details: when-authorized

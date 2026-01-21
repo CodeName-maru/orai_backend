@@ -10,8 +10,10 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 
 import org.springframework.beans.factory.annotation.Value;
@@ -27,6 +29,7 @@ public class NotificationService {
     private final NotificationRepository notificationRepository;
 
     //알림 내용 조회 화면
+    @Transactional
     public List<NotificationResDto> getNotification(String userId) {
         List<Notification> allByUserId = notificationRepository.findAllByUserId(userId);
         List<NotificationResDto> list = allByUserId.stream().map(notification -> notification.toDto(notification)).toList();
@@ -67,16 +70,21 @@ public class NotificationService {
         return notificationRepository.countByUserIdAndIsReadFalse(userId);
     }
 
+    @Transactional
     public void createNotification(NotificationEvent event) {
         NotificationMessage message = event.getMessage();
-        event.getUserIds().forEach(userId -> {
+        List<Notification> notifications = new ArrayList<>();
+
+        for (String userId : event.getUserIds()) {
             Notification notification = new Notification();
             notification.setUserId(userId);
             notification.setRead(false);
             notification.setCreatedAt(message.getCreatedAt());
             notification.setTitle(message.getTitle());
             notification.setMessage(message.getContent());
-            notificationRepository.save(notification);
-        });
+            notifications.add(notification);
+        }
+
+        notificationRepository.saveAll(notifications);
     }
 }

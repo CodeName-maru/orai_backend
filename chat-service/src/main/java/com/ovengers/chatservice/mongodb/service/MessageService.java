@@ -9,9 +9,12 @@ import com.ovengers.chatservice.mysql.repository.ChatRoomRepository;
 import com.ovengers.chatservice.mysql.repository.UserChatRoomRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
+
+import java.time.LocalDateTime;
 
 @Slf4j
 @Service
@@ -119,5 +122,51 @@ public class MessageService {
                     message.setType("DELETE");
                     return messageRepository.save(message).map(Message::toDto);
                 });
+    }
+
+    // 페이징된 메시지 조회 (최신 메시지부터)
+    public Flux<MessageDto> getMessagesWithPaging(Long chatRoomId, String userId, int size) {
+        UserResponseDto userInfo = getUserInfo(userId);
+
+        return validateChatRoomAndUserReactive(chatRoomId, userInfo.getUserId())
+                .thenMany(messageRepository.findByChatRoomIdOrderByCreatedAtDesc(chatRoomId, PageRequest.of(0, size))
+                        .collectList()
+                        .flatMapMany(messages -> {
+                            // 시간순 정렬로 반환 (오래된 메시지 -> 최신 메시지)
+                            java.util.Collections.reverse(messages);
+                            return Flux.fromIterable(messages);
+                        })
+                        .map(Message::toDto));
+    }
+
+    // 커서 기반 페이징: 이전 메시지 로드
+    public Flux<MessageDto> getMessagesBefore(Long chatRoomId, String userId, LocalDateTime cursor, int size) {
+        UserResponseDto userInfo = getUserInfo(userId);
+
+        return validateChatRoomAndUserReactive(chatRoomId, userInfo.getUserId())
+                .thenMany(messageRepository.findByChatRoomIdAndCreatedAtBeforeOrderByCreatedAtDesc(
+                                chatRoomId, cursor, PageRequest.of(0, size))
+                        .collectList()
+                        .flatMapMany(messages -> {
+                            // 시간순 정렬로 반환
+                            java.util.Collections.reverse(messages);
+                            return Flux.fromIterable(messages);
+                        })
+                        .map(Message::toDto));
+    }
+
+    // 커서 기반 페이징: 새 메시지 로드 (실시간 동기화용)
+    public Flux<MessageDto> getMessagesAfter(Long chatRoomId, String userId, LocalDateTime cursor) {
+        UserResponseDto userInfo = getUserInfo(userId);
+
+        return validateChatRoomAndUserReactive(chatRoomId, userInfo.getUserId())
+                .thenMany(messageRepository.findByChatRoomIdAndCreatedAtAfterOrderByCreatedAtAsc(chatRoomId, cursor)
+                        .map(Message::toDto));
+    }
+
+    // 메시지 총 개수 조회
+    public Mono<Long> getMessageCount(Long chatRoomId, String userId) {
+        validateChatRoomAndUser(chatRoomId, userId);
+        return messageRepository.countByChatRoomId(chatRoomId);
     }
 }

@@ -39,7 +39,7 @@ public class JwtTokenProvider {
         return Jwts.builder()
                 .setClaims(claims)
                 .setIssuedAt(now) // 발급 시간
-                .setExpiration(new Date(now.getTime() + expiration * 600 * 1000L)) // 만료 시간 (개발할 때 로그인 다시하기 귀찮으니까 10배 늘려놓음)
+                .setExpiration(new Date(now.getTime() + expiration * 1000L)) // 만료 시간 (초 단위)
                 .signWith(SignatureAlgorithm.HS256, secretKey) // 서명 알고리즘과 비밀 키 설정
                 .compact();
     }
@@ -55,7 +55,7 @@ public class JwtTokenProvider {
         return Jwts.builder()
                 .setClaims(claims)
                 .setIssuedAt(now) // 발급 시간
-                .setExpiration(new Date(now.getTime() + expirationRt * 600 * 1000L)) // 만료 시간
+                .setExpiration(new Date(now.getTime() + expirationRt * 1000L)) // 만료 시간 (초 단위)
                 .signWith(SignatureAlgorithm.HS256, secretKeyRt) // 서명 알고리즘과 리프레시 비밀 키 설정
                 .compact();
     }

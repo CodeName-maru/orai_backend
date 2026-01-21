@@ -279,10 +279,7 @@ public class AdminService{
         User user = userRepository.findById(userId).orElseThrow(() ->
             new EntityNotFoundException("User not found.")
         );
-        if(user==null) return false;
-        else{
-            userRepository.delete(user);
-            return true;
-        }
+        userRepository.delete(user);
+        return true;
     }
 }

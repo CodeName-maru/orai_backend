@@ -18,6 +18,15 @@ import java.time.format.DateTimeFormatter;
 @AllArgsConstructor
 @Builder
 public class Message {
+
+    // ISO 8601 기반 표준 날짜/시간 포맷터 (스레드 안전)
+    private static final DateTimeFormatter DATE_TIME_FORMATTER =
+            DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss");
+
+    // 기존 포맷 (하위 호환성 유지용)
+    private static final DateTimeFormatter DISPLAY_FORMATTER =
+            DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
+
     @Id
     private String messageId;
 
@@ -49,7 +58,6 @@ public class Message {
     private LocalDateTime updatedAt;
 
     public MessageDto toDto() {
-        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
         return MessageDto.builder()
                 .messageId(messageId)
                 .chatRoomId(chatRoomId)
@@ -58,8 +66,27 @@ public class Message {
                 .senderName(senderName)
                 .type(type)
                 .content(content)
-                .createdAt(createdAt != null ? createdAt.format(formatter) : "메시지생성시간없음")
-                .updatedAt(updatedAt != null ? updatedAt.format(formatter) : "메시지수정시간없음")
+                .createdAt(formatDateTime(createdAt))
+                .updatedAt(formatDateTime(updatedAt))
                 .build();
+    }
+
+    private String formatDateTime(LocalDateTime dateTime) {
+        if (dateTime == null) {
+            return null;
+        }
+        return dateTime.format(DISPLAY_FORMATTER);
+    }
+
+    /**
+     * ISO 8601 형식으로 날짜/시간을 포맷합니다.
+     * API 응답이나 외부 시스템 연동 시 사용합니다.
+     */
+    public String getCreatedAtIso() {
+        return createdAt != null ? createdAt.format(DATE_TIME_FORMATTER) : null;
+    }
+
+    public String getUpdatedAtIso() {
+        return updatedAt != null ? updatedAt.format(DATE_TIME_FORMATTER) : null;
     }
 }

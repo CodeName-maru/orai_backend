@@ -1,8 +1,9 @@
 package com.ovengers.userservice.controllers;
 
 import com.ovengers.userservice.common.auth.JwtTokenProvider;
-import com.ovengers.userservice.common.dto.CommonErrorDto;
-import com.ovengers.userservice.common.dto.CommonResDto;
+import com.ovengers.common.dto.CommonErrorDto;
+import com.ovengers.common.dto.CommonResDto;
+import com.ovengers.common.util.LogMaskingUtil;
 import com.ovengers.userservice.common.util.MfaSecretGenerator;
 import com.ovengers.userservice.dto.LoginRequestDto;
 import com.ovengers.userservice.dto.UserRequestDto;
@@ -30,7 +31,7 @@ public class UserController {
     private final UserService userService;
     private final JwtTokenProvider jwtTokenProvider;
     private final RedisTemplate<String, Object> redisTemplate;
-    private final GoogleAuthenticator gAuth = new GoogleAuthenticator();
+    private final GoogleAuthenticator gAuth;
 
 
     //회원가입하면서 mfa시크릿 키 생성
@@ -39,7 +40,7 @@ public class UserController {
     public ResponseEntity<UserResponseDto> createUser(@Valid @RequestBody UserRequestDto userRequestDto) {
         // 1. MFA 시크릿 키 생성
         String mfaSecret = MfaSecretGenerator.generateSecret();
-        log.info("Generated MFA secret for user {}: {}", userRequestDto.getEmail(), mfaSecret);
+        log.debug("Generated MFA secret for user: {}", LogMaskingUtil.maskEmail(userRequestDto.getEmail()));
 
         // 2. UserRequestDto에 MFA 시크릿 키 설정
         userRequestDto.setMfaSecret(mfaSecret);
@@ -59,10 +60,10 @@ public class UserController {
     public ResponseEntity<CommonResDto<Map<String, Object>>> login(@Valid @RequestBody UserRequestDto userRequestDto) {
         UserResponseDto responseDto = userService.login(userRequestDto);
 
-        // MFA 시크릿 키 조회
-        String secret = userService.getUserSecret(userRequestDto.getEmail());
+        // MFA 인증이 필요함을 알리고, userId만 반환 (secret은 서버에서 직접 검증)
         Map<String, Object> result = new HashMap<>();
-        result.put("secret", secret);
+        result.put("userId", responseDto.getUserId());
+        result.put("mfaRequired", true);
 
         return new ResponseEntity<>(
                 new CommonResDto<>(HttpStatus.OK, "Login successful, Mfa required.", result),
@@ -81,17 +82,19 @@ public class UserController {
 
     /**
      * Mfa 인증 코드 검증 및 JWT 토큰 발급
-     * 'email' -> 'secret'로 변경
+     * userId와 code를 받아 서버에서 secret을 조회하여 검증
      */
     @PostMapping("/validate-mfa")
     public ResponseEntity<CommonResDto<Map<String, Object>>> validateMfa(
-            @RequestParam String secret,  // 'email' -> 'secret'
-            @RequestParam String code) {  // 'code'를 String으로 변경
-        boolean isValid = gAuth.authorize(secret, Integer.parseInt(code));  // 코드 값은 Integer로 변환
+            @RequestParam String userId,
+            @RequestParam String code) {
+        // 서버에서 userId로 secret 조회
+        UserResponseDto user = userService.getUserById(userId);
+        String secret = userService.getUserSecretByUserId(userId);
+
+        boolean isValid = gAuth.authorize(secret, Integer.parseInt(code));
 
         if (isValid) {
-            // secret으로 사용자 조회
-            UserResponseDto user = userService.getUserBySecret(secret);
             String token = jwtTokenProvider.createToken(user.getUserId(), user.getEmail(), user.getDepartmentId());
 
             return new ResponseEntity<>(
@@ -113,14 +116,15 @@ public class UserController {
      * Mfa 인증 코드 검증
      */
     @PostMapping("/mfa/validate-code")
-    public ResponseEntity<CommonResDto<String>> validateCode(@RequestParam String secret, @RequestParam int code) {
+    public ResponseEntity<CommonResDto<String>> validateCode(@RequestParam String userId, @RequestParam int code) {
+        String secret = userService.getUserSecretByUserId(userId);
         boolean isValid = gAuth.authorize(secret, code);
 
         if (isValid) {
-            log.info("Mfa code validated successfully.");
+            log.debug("Mfa code validated successfully for userId: {}", userId);
             return new ResponseEntity<>(new CommonResDto<>(HttpStatus.OK, "Code is valid.", null), HttpStatus.OK);
         } else {
-            log.warn("Invalid Mfa code provided.");
+            log.warn("Invalid Mfa code provided for userId: {}", userId);
             return new ResponseEntity<>(new CommonResDto<>(HttpStatus.UNAUTHORIZED, "Invalid code.", null), HttpStatus.UNAUTHORIZED);
         }
     }
@@ -130,11 +134,11 @@ public class UserController {
      */
     @PostMapping("/refresh")
     public ResponseEntity<?> refreshToken(@RequestBody Map<String, String> id) {
-        log.info("/api/users/refresh: POST, id : {}", id.get("id"));
+        log.debug("/api/users/refresh: POST, id : {}", LogMaskingUtil.maskUserId(id.get("id")));
         UserResponseDto user = userService.getUserById(id.get("id"));
 
         Object obj = redisTemplate.opsForValue().get(user.getUserId());
-        log.info("레디스에서 조회한 데이터: {}", obj);
+        log.debug("Redis 데이터 조회 완료 - userId: {}", LogMaskingUtil.maskUserId(user.getUserId()));
 
         if (obj == null) {
             log.info("Refresh token expired.");
@@ -165,7 +169,7 @@ public class UserController {
     @GetMapping("/{userId}")
     public ResponseEntity<UserResponseDto> getUserById(@PathVariable String userId) {
         UserResponseDto responseDto = userService.getUserById(userId);
-        log.info("user:"+responseDto);
+        log.debug("User retrieved - userId: {}", LogMaskingUtil.maskUserId(responseDto.getUserId()));
         return new ResponseEntity<>(responseDto, HttpStatus.OK);
     }
 

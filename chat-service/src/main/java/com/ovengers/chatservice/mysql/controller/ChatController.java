@@ -1,6 +1,6 @@
 package com.ovengers.chatservice.mysql.controller;
 
-import com.ovengers.chatservice.common.auth.TokenUserInfo;
+import com.ovengers.common.auth.TokenUserInfo;
 import com.ovengers.chatservice.mysql.dto.ChatRoomUnreadDto;
 import com.ovengers.chatservice.mysql.service.ChatService;
 import io.swagger.v3.oas.annotations.Operation;

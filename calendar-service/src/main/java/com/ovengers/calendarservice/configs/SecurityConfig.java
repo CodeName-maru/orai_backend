@@ -1,6 +1,6 @@
 package com.ovengers.calendarservice.configs;  // 패키지 선언
 
-import com.ovengers.calendarservice.common.auth.JwtAuthFilter;
+import com.ovengers.common.auth.JwtAuthFilter;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.annotation.Bean;

@@ -90,16 +90,19 @@ public class VacationService {
     }
 
     public User findSupervisor(User user) {
-        if (user.getPosition().toString().equals("EMPLOYEE")) {
-            return userRepository.findByPositionAndDepartmentId(Position.TEAM_LEADER, user.getDepartmentId())
-                    .orElseThrow(() -> new IllegalArgumentException("No supervisor found"));
-        } else if (user.getPosition().toString().equals("TEAM_LEADER")) {
-            return userRepository.findByPositionAndDepartmentId(Position.MANAGER, user.getDepartmentId())
-                    .orElseThrow(() -> new IllegalArgumentException("No supervisor found"));
-        } else if (user.getPosition().toString().equals("MANAGER")) {
-            return userRepository.findByPositionAndDepartmentId(Position.CEO, user.getDepartmentId())
-                    .orElseThrow(() -> new IllegalArgumentException("No supervisor found"));
+        Position position = user.getPosition();
+        if (position == null) {
+            throw new IllegalArgumentException("User position cannot be null");
         }
-        return null;
+
+        return switch (position) {
+            case EMPLOYEE -> userRepository.findByPositionAndDepartmentId(Position.TEAM_LEADER, user.getDepartmentId())
+                    .orElseThrow(() -> new IllegalArgumentException("해당 부서의 팀장을 찾을 수 없습니다"));
+            case TEAM_LEADER -> userRepository.findByPositionAndDepartmentId(Position.MANAGER, user.getDepartmentId())
+                    .orElseThrow(() -> new IllegalArgumentException("해당 부서의 매니저를 찾을 수 없습니다"));
+            case MANAGER -> userRepository.findByPositionAndDepartmentId(Position.CEO, user.getDepartmentId())
+                    .orElseThrow(() -> new IllegalArgumentException("CEO를 찾을 수 없습니다"));
+            case CEO -> throw new IllegalArgumentException("CEO는 휴가 결재자가 없습니다");
+        };
     }
 }
