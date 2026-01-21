@@ -22,20 +22,20 @@ public class UserServiceClientFallback implements UserServiceClient {
         fallbackUser.setUserId(userId);
         fallbackUser.setName("Unknown User");
         fallbackUser.setEmail("unknown@unknown.com");
-        return new CommonResDto<>(HttpStatus.OK, "fallback response", fallbackUser);
+        return new CommonResDto<>(HttpStatus.SERVICE_UNAVAILABLE, "service unavailable", fallbackUser);
     }
 
     @Override
     public CommonResDto<List<UserResponseDto>> getUsersToList(Map<String, String> params) {
         log.warn("Fallback: user-service 목록 조회 실패. params={}", params);
-        return new CommonResDto<>(HttpStatus.OK, "fallback response", Collections.emptyList());
+        return new CommonResDto<>(HttpStatus.SERVICE_UNAVAILABLE, "service unavailable", Collections.emptyList());
     }
 
     @Override
     public CommonResDto<Page<UserResponseDto>> getUsersToPage(Map<String, String> params, int page, int size) {
         log.warn("Fallback: user-service 페이지 조회 실패. params={}, page={}, size={}", params, page, size);
         Page<UserResponseDto> emptyPage = new PageImpl<>(Collections.emptyList());
-        return new CommonResDto<>(HttpStatus.OK, "fallback response", emptyPage);
+        return new CommonResDto<>(HttpStatus.SERVICE_UNAVAILABLE, "service unavailable", emptyPage);
     }
 
     @Override

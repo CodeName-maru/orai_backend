@@ -1,4 +1,4 @@
-package com.ovengers.calendarservice.configs;
+package com.ovengers.calendarservice.common.configs;
 
 import org.springframework.context.annotation.Configuration;
 import org.springframework.scheduling.annotation.EnableScheduling;

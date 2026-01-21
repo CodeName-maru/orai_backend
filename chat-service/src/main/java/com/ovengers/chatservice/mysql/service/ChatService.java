@@ -92,19 +92,7 @@ public class ChatService {
         subscribers.stream()
                 .filter(subscriber -> !subscriber.getUserId().equals(senderId))
                 .forEach(subscriber -> {
-                    String userId = subscriber.getUserId();
-                    // 원자적 업데이트 시도
-                    int updatedRows = chatRoomReadRepository.incrementUnreadCount(chatRoomId, userId);
-
-                    // 레코드가 없으면 새로 생성
-                    if (updatedRows == 0) {
-                        ChatRoomRead chatRoomRead = ChatRoomRead.builder()
-                                .chatRoomId(chatRoomId)
-                                .userId(userId)
-                                .unreadCount(1L)
-                                .build();
-                        chatRoomReadRepository.save(chatRoomRead);
-                    }
+                    chatRoomReadRepository.upsertIncrementUnreadCount(chatRoomId, subscriber.getUserId());
                 });
     }
 

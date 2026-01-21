@@ -16,9 +16,13 @@ public interface ChatRoomReadRepository extends JpaRepository<ChatRoomRead, Long
     void deleteByChatRoomId(Long chatRoomId);
 
     /**
-     * 원자적 unreadCount 증가 - Race Condition 방지
+     * 원자적 upsert - Race Condition 방지
+     * INSERT하거나 이미 존재하면 unreadCount를 1 증가
      */
     @Modifying
-    @Query("UPDATE ChatRoomRead c SET c.unreadCount = c.unreadCount + 1 WHERE c.chatRoomId = :chatRoomId AND c.userId = :userId")
-    int incrementUnreadCount(@Param("chatRoomId") Long chatRoomId, @Param("userId") String userId);
+    @Query(value = "INSERT INTO tbl_chat_room_read (chat_room_id, user_id, unread_count) " +
+                   "VALUES (:chatRoomId, :userId, 1) " +
+                   "ON DUPLICATE KEY UPDATE unread_count = unread_count + 1",
+           nativeQuery = true)
+    void upsertIncrementUnreadCount(@Param("chatRoomId") Long chatRoomId, @Param("userId") String userId);
 }

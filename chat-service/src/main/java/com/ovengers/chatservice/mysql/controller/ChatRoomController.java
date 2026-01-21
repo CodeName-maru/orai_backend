@@ -2,7 +2,7 @@ package com.ovengers.chatservice.mysql.controller;
 
 import com.ovengers.chatservice.client.UserResponseDto;
 import com.ovengers.common.auth.TokenUserInfo;
-import com.ovengers.chatservice.common.config.AwsS3Config;
+import com.ovengers.chatservice.common.configs.AwsS3Config;
 import com.ovengers.chatservice.mysql.dto.ChatRoomDto;
 import com.ovengers.chatservice.mysql.dto.CompositeChatRoomDto;
 import com.ovengers.chatservice.mysql.service.ChatRoomService;

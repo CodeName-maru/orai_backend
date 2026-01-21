@@ -39,7 +39,7 @@ public class JwtAuthFilter extends OncePerRequestFilter {
         log.debug("Request URL: {}", request.getRequestURI());
 
         if (userId != null) {
-            String userRole = departmentId.contains(adminDepartmentId) ? "ADMIN" : "USER";
+            String userRole = adminDepartmentId.equals(departmentId) ? "ADMIN" : "USER";
             log.debug("userRole: {}", userRole);
 
             List<SimpleGrantedAuthority> authorities = new ArrayList<>();

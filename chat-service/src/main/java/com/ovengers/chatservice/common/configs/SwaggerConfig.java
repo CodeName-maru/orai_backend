@@ -1,4 +1,4 @@
-package com.ovengers.calendarservice.configs;
+package com.ovengers.chatservice.common.configs;
 
 import io.swagger.v3.oas.models.Components;
 import io.swagger.v3.oas.models.OpenAPI;
@@ -26,13 +26,12 @@ public class SwaggerConfig {
                 .info(apiInfo())
                 .addSecurityItem(securityRequirement)
                 .components(components)
-                .addServersItem(new Server().url("/calendar-service"));
+                .addServersItem(new Server().url("/chat-service"));
     }
-
     private Info apiInfo() {
         return new Info()
-                .title("API Test") // API의 제목
-                .description("Let's practice Swagger UI") // API에 대한 설명
-                .version("1.0.0"); // API의 버전
+                .title("API Test")
+                .description("Let's practice Swagger UI")
+                .version("1.0.0");
     }
 }

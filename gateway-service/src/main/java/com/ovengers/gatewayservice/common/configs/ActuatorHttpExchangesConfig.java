@@ -1,4 +1,4 @@
-package com.ovengers.gatewayservice.configs;
+package com.ovengers.gatewayservice.common.configs;
 
 import org.springframework.boot.actuate.web.exchanges.HttpExchangeRepository;
 import org.springframework.boot.actuate.web.exchanges.InMemoryHttpExchangeRepository;
@@ -12,10 +12,8 @@ public class ActuatorHttpExchangesConfig {
 
     @Bean
     public HttpExchangeRepository httpExchangeRepository() {
-        // 메모리 사용량 제한을 위해 최대 50개의 HTTP 교환 기록만 유지
         InMemoryHttpExchangeRepository repository = new InMemoryHttpExchangeRepository();
         repository.setCapacity(MAX_EXCHANGES_CAPACITY);
         return repository;
     }
 }
-

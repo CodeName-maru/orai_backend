@@ -1,4 +1,4 @@
-package com.ovengers.chatservice.common.config;  // 패키지 선언
+package com.ovengers.chatservice.common.configs;
 
 import com.ovengers.common.auth.JwtAuthFilter;
 import lombok.RequiredArgsConstructor;
@@ -23,8 +23,8 @@ public class SecurityConfig {
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
-        http.csrf(csrf -> csrf.disable())  // CSRF 비활성화
-                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))  // 상태 비저장
+        http.csrf(csrf -> csrf.disable())
+                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(
                                 "/v3/api-docs/**",
@@ -33,9 +33,9 @@ public class SecurityConfig {
                                 "/stomp/**",
                                 "/health-check",
                                 "/actuator/health"
-                        ).permitAll()  // 인증 없이 접근할 수 있는 URL들 (WebSocket은 자체 인증)
-                        .anyRequest().authenticated())  // 나머지 요청은 인증 필요
-                .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);  // JWT 필터 추가
+                        ).permitAll()
+                        .anyRequest().authenticated())
+                .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
     }
