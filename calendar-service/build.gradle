@@ -1,7 +1,7 @@
 plugins {
-	id 'java'
-	id 'org.springframework.boot' version '3.4.1'
-	id 'io.spring.dependency-management' version '1.1.7'
+    id 'java'
+    id 'org.springframework.boot' version '3.4.1'
+    id 'io.spring.dependency-management' version '1.1.7'
 }
 
 group = 'com.ovengers'
@@ -24,47 +24,56 @@ repositories {
 }
 
 ext {
-	set('springCloudVersion', "2024.0.0")
+    set('springCloudVersion', "2024.0.0")
 }
 
 dependencies {
-	implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
-	implementation 'org.springframework.boot:spring-boot-starter-web'
-	compileOnly 'org.projectlombok:lombok'
-	annotationProcessor 'org.projectlombok:lombok'
-	testImplementation 'org.springframework.boot:spring-boot-starter-test'
-	runtimeOnly 'com.mysql:mysql-connector-j'
-	testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
-	implementation group: 'org.springdoc', name: 'springdoc-openapi-starter-webmvc-ui', version: '2.2.0'
+    // Common module
+    implementation project(':orai-common')
 
-	// JWT 관련 라이브러리
-	implementation 'io.jsonwebtoken:jjwt-api:0.11.5'
-	runtimeOnly 'io.jsonwebtoken:jjwt-impl:0.11.5'
-	runtimeOnly 'io.jsonwebtoken:jjwt-jackson:0.11.5' // JSON serialization/deserialization
+    // Spring Boot
+    implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
+    implementation 'org.springframework.boot:spring-boot-starter-web'
+    implementation 'org.springframework.boot:spring-boot-starter-security'
+    implementation 'org.springframework.boot:spring-boot-starter-data-redis'
+    implementation 'org.springframework.boot:spring-boot-starter-validation'
 
-	// Spring Security
-	implementation 'org.springframework.boot:spring-boot-starter-security'
+    // Spring Cloud
+    implementation 'org.springframework.cloud:spring-cloud-starter-config'
+    implementation 'org.springframework.cloud:spring-cloud-starter-bootstrap'
+    implementation 'org.springframework.cloud:spring-cloud-starter-netflix-eureka-client'
+    implementation 'org.springframework.cloud:spring-cloud-starter-loadbalancer'
+    implementation 'org.springframework.cloud:spring-cloud-starter-openfeign'
+    implementation 'org.springframework.cloud:spring-cloud-starter-circuitbreaker-resilience4j'
 
-	// Spring Cloud 환경에서 server to server 요청을 처리해 주는 feign client 라이브러리
-	implementation 'org.springframework.cloud:spring-cloud-starter-openfeign'
+    // Lombok
+    compileOnly 'org.projectlombok:lombok'
+    annotationProcessor 'org.projectlombok:lombok'
 
-	implementation 'org.hibernate.validator:hibernate-validator:8.0.0.Final'
-	implementation 'jakarta.validation:jakarta.validation-api:3.0.2'
+    // MySQL
+    runtimeOnly 'com.mysql:mysql-connector-j'
 
-	// 쿼리 파라미터 추가 외부 로그 남기기
-	implementation 'com.github.gavlyukovskiy:p6spy-spring-boot-starter:1.9.0'
+    // OpenAPI
+    implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.2.0'
 
-	// s3...
-	implementation 'io.awspring.cloud:spring-cloud-aws-s3:3.0.2'
+    // JWT
+    implementation 'io.jsonwebtoken:jjwt-api:0.11.5'
+    runtimeOnly 'io.jsonwebtoken:jjwt-impl:0.11.5'
+    runtimeOnly 'io.jsonwebtoken:jjwt-jackson:0.11.5'
 
+    // Validation
+    implementation 'org.hibernate.validator:hibernate-validator:8.0.0.Final'
+    implementation 'jakarta.validation:jakarta.validation-api:3.0.2'
 
+    // Query logging
+    implementation 'com.github.gavlyukovskiy:p6spy-spring-boot-starter:1.9.0'
 
-	implementation 'org.springframework.cloud:spring-cloud-starter-config'
-	implementation 'org.springframework.cloud:spring-cloud-starter-bootstrap'
+    // AWS S3
+    implementation 'io.awspring.cloud:spring-cloud-aws-s3:3.0.2'
 
-	//레디스 관련 라이브러리
-	implementation 'org.springframework.boot:spring-boot-starter-data-redis'
-
+    // Test
+    testImplementation 'org.springframework.boot:spring-boot-starter-test'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 }
 
 dependencyManagement {

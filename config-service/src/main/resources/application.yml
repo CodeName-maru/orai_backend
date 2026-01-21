@@ -8,14 +8,30 @@ spring:
     config:
       server:
         git:
-          uri: https://github.com/CodeName-maru/cloud-config-setting.git
-          username: CodeName-maru
+          uri: ${GIT_CONFIG_REPO_URI:https://github.com/CodeName-maru/cloud-config-setting.git}
+          username: ${GIT_USERNAME:CodeName-maru}
           password: ${GIT_PRIVATE_KEY}
+
+# Eureka Client 설정
+eureka:
+  client:
+    register-with-eureka: true
+    fetch-registry: true
+    service-url:
+      defaultZone: ${EUREKA_SERVER_URL:http://localhost:8761/eureka}
+  instance:
+    prefer-ip-address: true
+    instance-id: ${spring.application.name}:${spring.application.instance_id:${random.value}}
+
 management:
   endpoints:
     web:
       exposure:
-        include: refresh, health, beans
+        # beans 엔드포인트는 보안상 프로덕션에서 노출하지 않음
+        include: health, info, refresh
+  endpoint:
+    health:
+      show-details: when-authorized
 
 # log level setting
 logging:

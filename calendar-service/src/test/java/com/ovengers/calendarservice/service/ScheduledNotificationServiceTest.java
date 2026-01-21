@@ -1,6 +1,6 @@
 package com.ovengers.calendarservice.service;
 
-import com.ovengers.calendarservice.common.auth.TokenUserInfo;
+import com.ovengers.common.auth.TokenUserInfo;
 import com.ovengers.calendarservice.dto.request.ScheduleRequestDto;
 import com.ovengers.calendarservice.dto.response.ScheduleResponseDto;
 import com.ovengers.calendarservice.entity.Department;

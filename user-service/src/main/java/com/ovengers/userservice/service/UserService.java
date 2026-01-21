@@ -1,7 +1,7 @@
 package com.ovengers.userservice.service;
 
 import com.ovengers.userservice.common.auth.JwtTokenProvider;
-import com.ovengers.userservice.common.auth.TokenUserInfo;
+import com.ovengers.common.auth.TokenUserInfo;
 import com.ovengers.userservice.dto.LoginRequestDto;
 import com.ovengers.userservice.dto.UserRequestDto;
 import com.ovengers.userservice.dto.UserResponseDto;
@@ -66,8 +66,8 @@ public class UserService {
         String refreshToken
                 = jwtTokenProvider.createRefreshToken(user.getUserId(), user.getDepartmentId());
 
-        // refresh Token을 DB에 저장하자. -> redis에 저장.
-        redisTemplate.opsForValue().set(user.getEmail(), refreshToken, 240, TimeUnit.HOURS);
+        // refresh Token을 DB에 저장하자. -> redis에 저장. (userId를 키로 사용)
+        redisTemplate.opsForValue().set(user.getUserId(), refreshToken, 240, TimeUnit.HOURS);
 
         return new UserResponseDto(user, token);
     }
@@ -112,6 +112,12 @@ public class UserService {
 
     public String getUserSecret(String email) {
         User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new EntityNotFoundException("사용자를 찾을 수 없습니다."));
+        return user.getUserSecret();
+    }
+
+    public String getUserSecretByUserId(String userId) {
+        User user = userRepository.findByUserId(userId)
                 .orElseThrow(() -> new EntityNotFoundException("사용자를 찾을 수 없습니다."));
         return user.getUserSecret();
     }

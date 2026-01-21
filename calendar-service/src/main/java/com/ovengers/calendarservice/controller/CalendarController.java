@@ -1,11 +1,13 @@
 package com.ovengers.calendarservice.controller;
 
-import com.ovengers.calendarservice.common.auth.TokenUserInfo;
+import com.ovengers.common.auth.TokenUserInfo;
 import com.ovengers.calendarservice.dto.request.ScheduleRequestDto;
 import com.ovengers.calendarservice.dto.response.ScheduleResponseDto;
 import com.ovengers.calendarservice.service.CalendarService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -24,21 +26,37 @@ public class CalendarController {
 
     private final CalendarService calendarService;
 
+    @Value("${app.admin.department-id:team9}")
+    private String adminDepartmentId;
+
+    /**
+     * 사용자 정보 유효성 검증
+     */
+    private void validateUserInfo(TokenUserInfo info) {
+        if (info == null) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "인증 정보가 없습니다.");
+        }
+        if (info.getId() == null || info.getId().isBlank()) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "사용자 ID가 없습니다.");
+        }
+        if (info.getDepartmentId() == null || info.getDepartmentId().isBlank()) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "부서 ID가 없습니다. X-User-DepartmentId 헤더를 확인하세요.");
+        }
+    }
+
     // 전체 일정 조회
     @GetMapping("")
     public ResponseEntity<List<ScheduleResponseDto>> getAllSchedules(@AuthenticationPrincipal TokenUserInfo info) {
-        if (info == null || info.getDepartmentId() == null) {
-            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "유효하지 않은 사용자입니다.");
-        }
+        validateUserInfo(info);
 
         String departmentId = info.getDepartmentId();
-        log.info("TokenUserInfo: {}", info);
+        log.debug("TokenUserInfo: {}", info);
 
         List<ScheduleResponseDto> schedules;
 
         try {
-            if ("team9".equals(departmentId)) {
-                // 'team9'이면 전체 일정 조회
+            if (adminDepartmentId.equals(departmentId)) {
+                // 관리자 부서이면 전체 일정 조회
                 schedules = calendarService.getAllSchedules();
             } else {
                 // 사용자의 팀 및 상위 부서 일정 조회
@@ -54,22 +72,14 @@ public class CalendarController {
         return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON).body(schedules);
     }
 
-//    // 특정 일정 조회
-//    @GetMapping("/{id}")
-//    public ResponseEntity<ScheduleResponseDto> getScheduleById(@PathVariable("id") String scheduleId) {
-//        ScheduleResponseDto schedule = calendarService.getScheduleById(scheduleId);
-//        return ResponseEntity.ok(schedule);
-//    }
-
-
     // 일정 생성
     @PostMapping("/create-schedule")
     public ResponseEntity<ScheduleResponseDto> addSchedule(
-            @RequestBody ScheduleRequestDto scheduleRequestDto,
+            @Valid @RequestBody ScheduleRequestDto scheduleRequestDto,
             @AuthenticationPrincipal TokenUserInfo userInfo) {
-        log.info("User Info: {}", userInfo); // 사용자 정보 확인
-        log.info("ScheduleRequestDto: {}", scheduleRequestDto);
-
+        validateUserInfo(userInfo);
+        log.debug("User Info: {}", userInfo);
+        log.debug("ScheduleRequestDto: {}", scheduleRequestDto);
 
         ScheduleResponseDto createdSchedule = calendarService.createSchedule(userInfo, scheduleRequestDto);
         return ResponseEntity.status(HttpStatus.CREATED).body(createdSchedule);
@@ -78,7 +88,7 @@ public class CalendarController {
     // 일정 수정
     @PutMapping("/modify-schedule/{id}")
     public ResponseEntity<ScheduleResponseDto> modifySchedule(
-            @RequestBody ScheduleRequestDto scheduleRequestDto,
+            @Valid @RequestBody ScheduleRequestDto scheduleRequestDto,
             @PathVariable("id") String scheduleId) {
 
         ScheduleResponseDto modifySchedule = calendarService.updateSchedule(scheduleId, scheduleRequestDto);
@@ -95,28 +105,4 @@ public class CalendarController {
         calendarService.deleteSchedule(scheduleId);
         return ResponseEntity.status(HttpStatus.NO_CONTENT).build();
     }
-
-/*
-    // 첨부파일 관련 메서드
-
-    @PostMapping("/upload")
-    public ResponseEntity<String> uploadAttachment(@RequestParam("file") MultipartFile file) {
-        try {
-//            String fileUrl = calendarService.(file);
-            return ResponseEntity.ok(fileUrl);
-        } catch (IOException e) {
-            return ResponseEntity.status(500).body("파일 업로드 실패: " + e.getMessage());
-        }
-    }
-
-    @DeleteMapping("/delete")
-    public ResponseEntity<String> deleteAttachment(@RequestParam("fileUrl") String fileUrl) {
-        try {
-//            calendarService.(fileUrl);
-            return ResponseEntity.ok("파일 삭제 성공");
-        } catch (Exception e) {
-            return ResponseEntity.status(500).body("파일 삭제 실패: " + e.getMessage());
-        }
-    }
-*/
 }

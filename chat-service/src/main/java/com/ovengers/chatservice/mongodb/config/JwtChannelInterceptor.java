@@ -1,6 +1,6 @@
 package com.ovengers.chatservice.mongodb.config;
 
-import com.ovengers.chatservice.common.auth.TokenUserInfo;
+import com.ovengers.common.auth.TokenUserInfo;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.messaging.Message;
@@ -25,26 +25,36 @@ public class JwtChannelInterceptor implements ChannelInterceptor {
     public Message<?> preSend(Message<?> message, MessageChannel channel) {
         StompHeaderAccessor accessor = StompHeaderAccessor.wrap(message);
 
-        if ("CONNECT".equals(accessor.getCommand().name())) {
+        if (accessor.getCommand() != null && "CONNECT".equals(accessor.getCommand().name())) {
             String jwtToken = accessor.getFirstNativeHeader("Authorization");
-            if (jwtToken != null && jwtToken.startsWith("Bearer ")) {
-                jwtToken = jwtToken.substring(7); // "Bearer " 제거
 
-                try {
-                    // JwtUtils를 사용하여 토큰 검증 및 정보 추출
-                    String userId = jwtUtils.getUserIdFromToken(jwtToken);
-                    String departmentId = jwtUtils.getDepartmentFromToken(jwtToken);
-
-                    // 인증 정보 설정
-                    List<SimpleGrantedAuthority> authorities = List.of(new SimpleGrantedAuthority("ROLE_USER"));
-                    UsernamePasswordAuthenticationToken auth = new UsernamePasswordAuthenticationToken(
-                            new TokenUserInfo(userId, departmentId), null, authorities);
-                    SecurityContextHolder.getContext().setAuthentication(auth);
-                } catch (Exception e) {
-                    throw new IllegalArgumentException("Invalid JWT Token: " + e.getMessage());
-                }
+            // JWT 토큰이 없거나 Bearer 형식이 아니면 연결 거부
+            if (jwtToken == null || !jwtToken.startsWith("Bearer ")) {
+                log.warn("WebSocket connection rejected: Missing or invalid Authorization header");
+                throw new IllegalArgumentException("WebSocket 연결에 유효한 JWT 토큰이 필요합니다");
             }
-            log.debug("Authorization header: " + jwtToken);
+
+            jwtToken = jwtToken.substring(7); // "Bearer " 제거
+
+            try {
+                // JwtUtils를 사용하여 토큰 검증 및 정보 추출
+                String userId = jwtUtils.getUserIdFromToken(jwtToken);
+                String departmentId = jwtUtils.getDepartmentFromToken(jwtToken);
+
+                if (userId == null || userId.isBlank()) {
+                    throw new IllegalArgumentException("토큰에서 사용자 정보를 추출할 수 없습니다");
+                }
+
+                // 인증 정보 설정
+                List<SimpleGrantedAuthority> authorities = List.of(new SimpleGrantedAuthority("ROLE_USER"));
+                UsernamePasswordAuthenticationToken auth = new UsernamePasswordAuthenticationToken(
+                        new TokenUserInfo(userId, departmentId), null, authorities);
+                SecurityContextHolder.getContext().setAuthentication(auth);
+                log.debug("WebSocket authenticated for userId: {}", userId);
+            } catch (Exception e) {
+                log.error("WebSocket authentication failed: {}", e.getMessage());
+                throw new IllegalArgumentException("Invalid JWT Token: " + e.getMessage());
+            }
         }
         return message;
     }

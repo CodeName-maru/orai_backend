@@ -1,0 +1,10 @@
+rootProject.name = 'orai-backend'
+
+include 'orai-common'
+include 'user-service'
+include 'chat-service'
+include 'calendar-service'
+include 'etc-service'
+include 'gateway-service'
+include 'config-service'
+include 'discovery-service'

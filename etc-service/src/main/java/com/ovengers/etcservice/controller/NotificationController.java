@@ -1,7 +1,7 @@
 package com.ovengers.etcservice.controller;
 
-import com.ovengers.etcservice.common.auth.TokenUserInfo;
-import com.ovengers.etcservice.common.dto.CommonResDto;
+import com.ovengers.common.auth.TokenUserInfo;
+import com.ovengers.common.dto.CommonResDto;
 import com.ovengers.etcservice.dto.NotificationEvent;
 import com.ovengers.etcservice.dto.NotificationResDto;
 import com.ovengers.etcservice.entity.Notification;
@@ -16,12 +16,7 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
-import java.io.IOException;
 import java.util.List;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.Executors;
-import java.util.concurrent.TimeUnit;
 
 @Slf4j
 @RestController
@@ -30,7 +25,6 @@ import java.util.concurrent.TimeUnit;
 public class NotificationController {
     private final NotificationService notificationService;
     private final SseConnectionService connectionService;
-    private final Map<String, SseEmitter> clients = new ConcurrentHashMap<>();
 
     @GetMapping(value = "/subscribe", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     public SseEmitter subscribe(@AuthenticationPrincipal TokenUserInfo tokenUserInfo) {

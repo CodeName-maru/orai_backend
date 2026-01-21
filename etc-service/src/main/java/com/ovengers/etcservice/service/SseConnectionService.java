@@ -1,8 +1,8 @@
 package com.ovengers.etcservice.service;
 
 import jakarta.annotation.PostConstruct;
+import jakarta.annotation.PreDestroy;
 import lombok.Getter;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
@@ -14,32 +14,55 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 
 @Slf4j
-@RequiredArgsConstructor
 @Service
 public class SseConnectionService {
 
-    //유레카꺼 쓰는거 개찝찝한디.
-//    @Value("${eureka.client.instance.instance-id}")
     @Value("${HOSTNAME:localhost}") // 쿠버네티스 환경에서 HOSTNAME 사용, 없으면 'localhost'로 대체
     private String hostname;
 
     @Getter
     private String instanceId;
 
-    @PostConstruct
-    public void init() {
-        this.instanceId = hostname + "-" + UUID.randomUUID();
-        System.out.println("Generated Instance ID: " + instanceId);
-    }
+    // 공유 스케줄러 - 모든 연결이 공유하여 메모리 누수 방지
+    private final ScheduledExecutorService heartbeatScheduler = Executors.newScheduledThreadPool(2);
+    private final Map<String, ScheduledFuture<?>> heartbeatTasks = new ConcurrentHashMap<>();
 
     @Qualifier("sse-template")
     private final RedisTemplate<String, Object> redisTemplate;
     private final Map<String, SseEmitter> emitters = new ConcurrentHashMap<>();
 
+    public SseConnectionService(@Qualifier("sse-template") RedisTemplate<String, Object> redisTemplate) {
+        this.redisTemplate = redisTemplate;
+    }
+
+    @PostConstruct
+    public void init() {
+        this.instanceId = hostname + "-" + UUID.randomUUID();
+        log.info("Generated Instance ID: {}", instanceId);
+    }
+
+    @PreDestroy
+    public void destroy() {
+        heartbeatScheduler.shutdown();
+        try {
+            if (!heartbeatScheduler.awaitTermination(5, TimeUnit.SECONDS)) {
+                heartbeatScheduler.shutdownNow();
+            }
+        } catch (InterruptedException e) {
+            heartbeatScheduler.shutdownNow();
+            Thread.currentThread().interrupt();
+        }
+    }
+
     public SseEmitter connect(String userId) {
+        // 기존 연결이 있으면 정리
+        removeEmitter(userId);
+
         SseEmitter emitter = new SseEmitter(60 * 60 * 1000L); // 1시간
 
         // Redis Hash에 연결 정보 저장
@@ -50,28 +73,35 @@ public class SseConnectionService {
         emitters.put(userId, emitter);
 
         // 연결 종료 시 cleanup
-//        emitter.onCompletion(() -> removeEmitter(userId));
+        emitter.onCompletion(() -> removeEmitter(userId));
         emitter.onTimeout(() -> removeEmitter(userId));
+        emitter.onError(e -> removeEmitter(userId));
 
         try {
             // 연결 성공 메시지 전송
             emitter.send(SseEmitter.event()
                     .name("connect")
                     .data("Connected to notification service"));
-            //            // 30초마다 heartbeat 메시지를 전송하여 연결 유지
-            // 클라이언트에서 사용하는 EventSourcePolyfill이 45초 동안 활동이 없으면 지맘대로 연결 종료
-            Executors.newScheduledThreadPool(1).scheduleAtFixedRate(() -> {
+
+            // 공유 스케줄러로 heartbeat 등록 (메모리 누수 방지)
+            ScheduledFuture<?> heartbeatTask = heartbeatScheduler.scheduleAtFixedRate(() -> {
                 try {
-                    emitter.send(SseEmitter.event()
-                            .name("heartbeat")
-                            .data("keep-alive")); // 클라이언트 단이 살아있는지 확인
+                    SseEmitter currentEmitter = emitters.get(userId);
+                    if (currentEmitter != null) {
+                        currentEmitter.send(SseEmitter.event()
+                                .name("heartbeat")
+                                .data("keep-alive"));
+                    }
                 } catch (IOException e) {
                     log.warn("Failed to send heartbeat, removing emitter for userId: {}", userId);
+                    removeEmitter(userId);
                 }
-            }, 30, 30, TimeUnit.SECONDS); // 30초마다 heartbeat 메시지 전송
+            }, 30, 30, TimeUnit.SECONDS);
+
+            heartbeatTasks.put(userId, heartbeatTask);
         } catch (IOException e) {
             log.error("Failed to send connection message to user {}", userId);
-//            removeEmitter(userId);
+            removeEmitter(userId);
         }
 
         return emitter;
@@ -80,7 +110,14 @@ public class SseConnectionService {
     public void removeEmitter(String userId) {
         emitters.remove(userId);
         redisTemplate.opsForHash().delete("user:connections", userId);
-        log.info("Removed emitter for user {}", userId);
+
+        // heartbeat 태스크 취소
+        ScheduledFuture<?> heartbeatTask = heartbeatTasks.remove(userId);
+        if (heartbeatTask != null) {
+            heartbeatTask.cancel(false);
+        }
+
+        log.debug("Removed emitter for user {}", userId);
     }
 
     public SseEmitter getEmitter(String userId) {

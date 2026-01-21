@@ -1,6 +1,6 @@
 package com.ovengers.chatservice.client;
 
-import com.ovengers.chatservice.common.dto.CommonResDto;
+import com.ovengers.common.dto.CommonResDto;
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.data.domain.Page;
 import org.springframework.web.bind.annotation.*;
@@ -8,7 +8,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 import java.util.Map;
 
-@FeignClient(name = "user-service", url = "http://user-service.default.svc.cluster.local:8081")
+@FeignClient(name = "user-service", fallback = UserServiceClientFallback.class)
 public interface UserServiceClient {
 
     /**

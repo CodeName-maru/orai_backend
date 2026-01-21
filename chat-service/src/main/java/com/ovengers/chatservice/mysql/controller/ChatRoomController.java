@@ -1,8 +1,8 @@
 package com.ovengers.chatservice.mysql.controller;
 
 import com.ovengers.chatservice.client.UserResponseDto;
-import com.ovengers.chatservice.common.auth.TokenUserInfo;
-import com.ovengers.chatservice.common.config.AwsS3Config;
+import com.ovengers.common.auth.TokenUserInfo;
+import com.ovengers.chatservice.common.configs.AwsS3Config;
 import com.ovengers.chatservice.mysql.dto.ChatRoomDto;
 import com.ovengers.chatservice.mysql.dto.CompositeChatRoomDto;
 import com.ovengers.chatservice.mysql.service.ChatRoomService;
@@ -28,14 +28,47 @@ public class ChatRoomController {
     private final ChatRoomService chatRoomService;
     private final AwsS3Config s3Config;
 
+    // 허용된 이미지 타입
+    private static final Set<String> ALLOWED_IMAGE_TYPES = Set.of(
+            "image/jpeg", "image/png", "image/gif", "image/webp"
+    );
+    // 최대 파일 크기 (5MB)
+    private static final long MAX_FILE_SIZE = 5 * 1024 * 1024;
+
+    /**
+     * 입력 문자열 정리 및 XSS 방지
+     */
     public String cleanInput(String input) {
         if (input == null) {
             return null;
         }
-        // 문자열 양 끝의 쌍따옴표만 제거
-        return input.startsWith("\"") && input.endsWith("\"")
+        // 문자열 양 끝의 쌍따옴표 제거
+        String cleaned = input.startsWith("\"") && input.endsWith("\"")
                 ? input.substring(1, input.length() - 1)
                 : input;
+        // XSS 방지: HTML 태그 제거
+        return cleaned.replaceAll("<[^>]*>", "")
+                      .replaceAll("&", "&amp;")
+                      .replaceAll("<", "&lt;")
+                      .replaceAll(">", "&gt;")
+                      .replaceAll("\"", "&quot;")
+                      .replaceAll("'", "&#x27;");
+    }
+
+    /**
+     * 파일 업로드 검증
+     */
+    private void validateImageFile(MultipartFile file) {
+        if (file == null || file.isEmpty()) {
+            throw new IllegalArgumentException("이미지 파일이 필요합니다.");
+        }
+        if (file.getSize() > MAX_FILE_SIZE) {
+            throw new IllegalArgumentException("파일 크기는 5MB를 초과할 수 없습니다.");
+        }
+        String contentType = file.getContentType();
+        if (contentType == null || !ALLOWED_IMAGE_TYPES.contains(contentType)) {
+            throw new IllegalArgumentException("허용되지 않은 파일 형식입니다. (허용: JPEG, PNG, GIF, WEBP)");
+        }
     }
 
     @Operation(summary = "유저 프로필 조회", description = "유저Id")
@@ -58,28 +91,30 @@ public class ChatRoomController {
                                                                @RequestParam String name,
                                                                @AuthenticationPrincipal TokenUserInfo tokenUserInfo,
                                                                @RequestParam List<String> userIds) throws IOException {
-        // userIds에서 각 유저 ID의 앞뒤 따옴표 제거
+        // 파일 검증
+        validateImageFile(image);
+
+        // userIds에서 각 유저 ID의 앞뒤 따옴표 제거 및 XSS 방지
         List<String> cleanedUserIds = userIds.stream()
                 .map(this::cleanInput)
                 .toList();
 
-        log.info("\n\n\n" + cleanedUserIds + "\n\n\n");
+        // 채팅방 이름 XSS 방지
+        String cleanedName = cleanInput(name);
 
-        String uniqueFileName;
-        if (image != null && !image.isEmpty()) {
-            uniqueFileName = UUID.randomUUID() + "_" + image.getOriginalFilename();
-            String imageUrl = s3Config.uploadToS3Bucket(image.getBytes(), uniqueFileName);
+        log.debug("Creating chat room with users: {}", cleanedUserIds);
 
-            CompositeChatRoomDto compositeChatRoomDto = chatRoomService.createChatRoom(
-                    imageUrl,
-                    name,
-                    tokenUserInfo.getId(),
-                    cleanedUserIds
-            );
+        String uniqueFileName = UUID.randomUUID() + "_" + image.getOriginalFilename();
+        String imageUrl = s3Config.uploadToS3Bucket(image.getBytes(), uniqueFileName);
 
-            return ResponseEntity.ok(compositeChatRoomDto);
-        }
-        return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
+        CompositeChatRoomDto compositeChatRoomDto = chatRoomService.createChatRoom(
+                imageUrl,
+                cleanedName,
+                tokenUserInfo.getId(),
+                cleanedUserIds
+        );
+
+        return ResponseEntity.ok(compositeChatRoomDto);
     }
 
     @Operation(summary = "구독한 채팅방 목록")
@@ -109,12 +144,12 @@ public class ChatRoomController {
     public ResponseEntity<Void> inviteUsers(@PathVariable Long chatRoomId,
                                             @AuthenticationPrincipal TokenUserInfo tokenUserInfo,
                                             @RequestParam List<String> inviteeIds) {
-        // userIds에서 각 유저 ID의 앞뒤 따옴표 제거
+        // userIds에서 각 유저 ID의 앞뒤 따옴표 제거 및 XSS 방지
         List<String> cleanedUserIds = inviteeIds.stream()
                 .map(this::cleanInput)
                 .toList();
 
-        log.info("\n\n\n" + cleanedUserIds + "\n\n\n");
+        log.debug("Inviting users to chat room {}: {}", chatRoomId, cleanedUserIds);
 
         chatRoomService.inviteUsers(chatRoomId, tokenUserInfo.getId(), cleanedUserIds);
         return ResponseEntity.ok().build();
@@ -144,27 +179,25 @@ public class ChatRoomController {
                                                       @RequestPart(value = "image", required = false) MultipartFile image,
                                                       @RequestParam String name,
                                                       @AuthenticationPrincipal TokenUserInfo tokenUserInfo) throws IOException {
-        if (image != null && !image.isEmpty()) {
-            String uniqueFileName = UUID.randomUUID() + "_" + image.getOriginalFilename();
-            String imageUrl = s3Config.uploadToS3Bucket(image.getBytes(), uniqueFileName);
+        // 채팅방 이름 XSS 방지
+        String cleanedName = cleanInput(name);
+        String imageUrl = "";
 
-            ChatRoomDto chatRoomDto = chatRoomService.updateChatRoom(
-                    chatRoomId,
-                    imageUrl,
-                    name,
-                    tokenUserInfo.getId()
-            );
-            log.info("\n\n\n" + chatRoomDto + "\n\n\n");
-            return ResponseEntity.ok(chatRoomDto);
-        } else {
-            ChatRoomDto chatRoomDto = chatRoomService.updateChatRoom(
-                    chatRoomId,
-                    "",
-                    name,
-                    tokenUserInfo.getId()
-            );
-            return ResponseEntity.ok(chatRoomDto);
+        if (image != null && !image.isEmpty()) {
+            // 파일 검증
+            validateImageFile(image);
+            String uniqueFileName = UUID.randomUUID() + "_" + image.getOriginalFilename();
+            imageUrl = s3Config.uploadToS3Bucket(image.getBytes(), uniqueFileName);
         }
+
+        ChatRoomDto chatRoomDto = chatRoomService.updateChatRoom(
+                chatRoomId,
+                imageUrl,
+                cleanedName,
+                tokenUserInfo.getId()
+        );
+        log.debug("Updated chat room: {}", chatRoomDto);
+        return ResponseEntity.ok(chatRoomDto);
     }
 
     @Operation(summary = "채팅방 삭제", description = "채팅방Id - chatRoom, userChatRoom, invitation에서 삭제됨")

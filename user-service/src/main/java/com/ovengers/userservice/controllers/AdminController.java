@@ -1,7 +1,8 @@
 package com.ovengers.userservice.controllers;
 import com.ovengers.userservice.client.CalendarServiceClient;
 import com.ovengers.userservice.common.configs.AwsS3Config;
-import com.ovengers.userservice.common.dto.CommonResDto;
+import com.ovengers.common.dto.CommonResDto;
+import com.ovengers.common.util.LogMaskingUtil;
 import com.ovengers.userservice.common.util.MfaSecretGenerator;
 import com.ovengers.userservice.dto.AttitudeResponseDto;
 import com.ovengers.userservice.dto.SignUpRequestDto;
@@ -54,7 +55,7 @@ public class AdminController {
     })
     @GetMapping(value = "/admin/users/list")
     public ResponseEntity<CommonResDto> getUsers(@RequestParam Map<String, String> params) {
-        log.info("Search params: {}", params);
+        log.debug("Search params received - keys: {}", params.keySet());
 
         Map<String,String> map = calendarServiceClient.getDepartmentMap();
 
@@ -75,7 +76,7 @@ public class AdminController {
     @GetMapping(value = "/admin/users/page")
     public ResponseEntity<?> getUsers(@RequestParam Map<String,String> params,
                                       Pageable pageable) {
-        log.info("params : {}", params);
+        log.debug("Page params received - keys: {}", params.keySet());
 
         Map<String,String> map = calendarServiceClient.getDepartmentMap();
 
@@ -115,7 +116,8 @@ public class AdminController {
                 .mfaSecret(MfaSecretGenerator.generateSecret())
                 .build();
 
-        log.info("user-service/admins/users: POST, dto: {}", dto);
+        log.debug("Creating user - email: {}, departmentId: {}",
+                LogMaskingUtil.maskEmail(dto.getEmail()), dto.getDepartmentId());
 
         // 파일 처리 로직
         String uniqueFileName;

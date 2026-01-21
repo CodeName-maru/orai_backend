@@ -16,7 +16,7 @@ public class ScheduleResponseDto {
 
 //    private String userId;
 
-    private String ScheduleId;
+    private String scheduleId;
 
     private String title;
 

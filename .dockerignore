@@ -1,0 +1,65 @@
+# ===========================================
+# Docker Ignore File for Orai Microservices
+# ===========================================
+
+# Git
+.git
+.gitignore
+
+# Build outputs
+**/build/
+**/target/
+**/*.class
+**/*.jar
+!**/src/**/build/
+
+# IDE
+.idea/
+*.iml
+*.ipr
+*.iws
+.vscode/
+*.swp
+*.swo
+
+# Gradle
+.gradle/
+**/gradle/wrapper/gradle-wrapper.jar
+
+# Logs
+**/*.log
+**/logs/
+
+# Test results
+**/test-results/
+**/test-output/
+
+# Temporary files
+**/*.tmp
+**/*.temp
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Documentation
+docs/
+*.md
+!README.md
+
+# Docker (prevent recursive copy)
+docker-compose*.yml
+Dockerfile*
+.dockerignore
+
+# Environment files
+.env
+.env.*
+*.env
+
+# Node modules (if any frontend exists)
+**/node_modules/
+
+# Local configs
+**/application-local.yml
+**/application-local.properties

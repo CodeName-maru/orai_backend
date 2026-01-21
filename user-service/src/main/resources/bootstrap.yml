@@ -4,5 +4,7 @@ spring:
     name: user-service
   cloud:
     config:
-      uri: http://config-service:8888
+      uri: ${CONFIG_SERVER_URL:http://localhost:8888}
       name: user-service
+      fail-fast: false
+      enabled: ${CONFIG_ENABLED:false}

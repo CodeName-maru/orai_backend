@@ -92,16 +92,7 @@ public class ChatService {
         subscribers.stream()
                 .filter(subscriber -> !subscriber.getUserId().equals(senderId))
                 .forEach(subscriber -> {
-                    ChatRoomRead chatRoomRead = chatRoomReadRepository
-                            .findByChatRoomIdAndUserId(chatRoomId, subscriber.getUserId())
-                            .orElseGet(() -> ChatRoomRead.builder()
-                                    .chatRoomId(chatRoomId)
-                                    .userId(subscriber.getUserId())
-                                    .unreadCount(0L)
-                                    .build());
-
-                    chatRoomRead.setUnreadCount(chatRoomRead.getUnreadCount() + 1);
-                    chatRoomReadRepository.save(chatRoomRead);
+                    chatRoomReadRepository.upsertIncrementUnreadCount(chatRoomId, subscriber.getUserId());
                 });
     }
 

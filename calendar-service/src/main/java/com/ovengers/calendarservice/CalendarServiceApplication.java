@@ -5,7 +5,7 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.cloud.openfeign.EnableFeignClients;
 import org.springframework.data.jpa.repository.config.EnableJpaAuditing;
 
-@SpringBootApplication
+@SpringBootApplication(scanBasePackages = {"com.ovengers.calendarservice", "com.ovengers.common"})
 @EnableFeignClients
 @EnableJpaAuditing
 public class CalendarServiceApplication {

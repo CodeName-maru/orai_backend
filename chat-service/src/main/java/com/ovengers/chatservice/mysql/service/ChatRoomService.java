@@ -10,7 +10,8 @@ import com.ovengers.chatservice.mysql.dto.CompositeChatRoomDto;
 import com.ovengers.chatservice.mysql.entity.ChatRoom;
 import com.ovengers.chatservice.mysql.entity.Invitation;
 import com.ovengers.chatservice.mysql.entity.UserChatRoom;
-import com.ovengers.chatservice.mysql.exception.InvalidChatRoomNameException;
+import com.ovengers.common.exception.BusinessException;
+import com.ovengers.common.exception.ErrorCode;
 import com.ovengers.chatservice.mysql.repository.ChatRoomReadRepository;
 import com.ovengers.chatservice.mysql.repository.ChatRoomRepository;
 import com.ovengers.chatservice.mysql.repository.InvitationRepository;
@@ -60,8 +61,8 @@ public class ChatRoomService {
 
     // 유효성 검사 메서드
     private void validateChatRoomName(String name) {
-        if (StringUtils.isBlank(name)) { // Apache Commons Lang 사용 (공백 또는 null 확인)
-            throw new InvalidChatRoomNameException("채팅방 이름은 공백만으로 지정할 수 없습니다.");
+        if (StringUtils.isBlank(name)) {
+            throw new BusinessException(ErrorCode.INVALID_CHAT_ROOM_NAME, "채팅방 이름은 공백만으로 지정할 수 없습니다.");
         }
     }
 
@@ -278,9 +279,8 @@ public class ChatRoomService {
                 .map(UserChatRoom::getUserId)
                 .toList();
 
-        return userIds.stream()
-                .map(userServiceClient::getUserById)
-                .collect(Collectors.toList());
+        // N+1 쿼리 방지: 배치 API 사용
+        return userServiceClient.getUsersByIds(userIds);
     }
 
     // 채팅방에 초대
@@ -327,7 +327,7 @@ public class ChatRoomService {
                     // 이미 초대된 유저인지 확인
                     boolean alreadyInvited = invitationRepository.existsByChatRoomIdAndUserIdAndAcceptedFalse(chatRoomId, inviteeId);
                     if (alreadyInvited) {
-                        System.out.println("이미 초대된 유저: " + inviteeId);
+                        log.debug("이미 초대된 유저: {}", inviteeId);
                     }
                     return !alreadyInvited;
                 })

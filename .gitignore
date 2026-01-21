@@ -28,3 +28,11 @@ out/
 
 ### VS Code ###
 .vscode/
+
+### Gradle ###
+build/
+.gradle/
+
+### claude ###
+CLAUDE.md
+.claude

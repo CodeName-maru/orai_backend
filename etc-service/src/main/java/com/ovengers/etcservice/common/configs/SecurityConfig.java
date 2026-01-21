@@ -1,6 +1,6 @@
 package com.ovengers.etcservice.common.configs;  // 패키지 선언
 
-import com.ovengers.etcservice.common.auth.JwtAuthFilter;
+import com.ovengers.common.auth.JwtAuthFilter;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.annotation.Bean;
@@ -26,8 +26,13 @@ public class SecurityConfig {
         http.csrf(csrf -> csrf.disable())  // CSRF 비활성화
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))  // 상태 비저장
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/**")  // 인증 없이 접근할 수 있는 URL들
-                        .permitAll()  // 해당 URL들은 인증 없이 접근 가능
+                        .requestMatchers(
+                                "/v3/api-docs/**",
+                                "/swagger-ui/**",
+                                "/swagger-ui.html",
+                                "/health-check",
+                                "/actuator/health"
+                        ).permitAll()  // 인증 없이 접근할 수 있는 URL들
                         .anyRequest().authenticated())  // 나머지 요청은 인증 필요
                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);  // JWT 필터 추가
 

@@ -5,13 +5,12 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 
 import java.time.LocalDate;
-import java.time.LocalDateTime;
 import java.util.List;
 
 public interface CalendarRepository extends JpaRepository<Schedule, String> {
 
-    // startTime 필드와 endTime 필드를 기준으로 조회
-    List<Schedule> findByStartTimeBetween(LocalDateTime start, LocalDateTime end);
+    // startTime 필드와 endTime 필드를 기준으로 조회 (LocalDate 타입과 일치)
+    List<Schedule> findByStartTimeBetween(LocalDate start, LocalDate end);
 
     // 부서별 일정 조회
     @Query("SELECT s FROM Schedule s WHERE s.department.departmentId = :departmentId")
@@ -23,7 +22,8 @@ public interface CalendarRepository extends JpaRepository<Schedule, String> {
 
     List<Schedule> findByUserId(String userId);
 
-    @Query("SELECT s FROM Schedule s WHERE DATE(s.startTime) = :date")
+    // startTime이 LocalDate 타입이므로 DATE() 함수 불필요
+    @Query("SELECT s FROM Schedule s WHERE s.startTime = :date")
     List<Schedule> findByDate(LocalDate date);
 
     List<Schedule> findByDepartment_DepartmentIdIn(List<String> departmentIds);

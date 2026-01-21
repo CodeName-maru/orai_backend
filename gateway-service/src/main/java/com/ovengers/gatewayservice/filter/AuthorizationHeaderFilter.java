@@ -2,6 +2,8 @@ package com.ovengers.gatewayservice.filter;
 
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
+import io.jsonwebtoken.security.Keys;
+import jakarta.annotation.PostConstruct;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.cloud.gateway.filter.GatewayFilter;
@@ -17,6 +19,7 @@ import org.springframework.web.server.ServerWebExchange;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
+import javax.crypto.SecretKey;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.List;
@@ -26,30 +29,54 @@ import java.util.List;
 public class AuthorizationHeaderFilter
         extends AbstractGatewayFilterFactory<AuthorizationHeaderFilter.Config> {
 
+    private static final int MIN_SECRET_KEY_LENGTH = 32; // 256 bits minimum for HS256
+
+    // AntPathMatcher는 스레드 안전하므로 재사용
+    private final AntPathMatcher antPathMatcher = new AntPathMatcher();
+
     @Value("${jwt.secretKey}")
-    private String secretKey;
+    private String secretKeyString;
+
+    private SecretKey secretKey;
 
     private final List<String> allowUrl = Arrays.asList(
-            "/v3/api-docs/**","/api/users/create", "/api/users/login","/api/users/devLogin", "/refresh", "/", "/findByEmail", "/users/email","/health-check","/actuator/**"
-            ,"/api/users/validate-mfa", "/api/users/mfa/validate-code/**"
+            "/v3/api-docs/**",
+            "/api/users/create",
+            "/api/users/login",
+            "/api/users/devLogin",
+            "/api/users/validate-mfa",
+            "/api/users/mfa/validate-code",
+            "/api/users/refresh",
+            "/api/users/check-email",
+            "/health-check",
+            "/actuator/health"
     );
 
     public AuthorizationHeaderFilter() {
         super(Config.class);
     }
 
+    @PostConstruct
+    public void init() {
+        // Secret Key 길이 검증 및 SecretKey 객체 생성
+        if (secretKeyString == null || secretKeyString.length() < MIN_SECRET_KEY_LENGTH) {
+            throw new IllegalStateException(
+                    "JWT secret key must be at least " + MIN_SECRET_KEY_LENGTH + " characters long");
+        }
+        this.secretKey = Keys.hmacShaKeyFor(secretKeyString.getBytes(StandardCharsets.UTF_8));
+        log.info("JWT SecretKey initialized successfully");
+    }
+
     @Override
     public GatewayFilter apply(Config config) {
         return (exchange, chain) -> {
             String path = exchange.getRequest().getURI().getPath();
-            AntPathMatcher antPathMatcher = new AntPathMatcher();
 
-            log.info("Request Path: {}", path);
-            log.info("Allow URLs: {}", allowUrl);
+            log.debug("Request Path: {}", path);
             // 허용 url 리스트를 순회하면서 지금 들어온 요청 url과 하나라도 일치하면 true 리턴
             boolean isAllowed
                     = allowUrl.stream().anyMatch(url -> antPathMatcher.match(url, path));
-            log.info("isAllowed: {}", isAllowed);
+            log.debug("isAllowed: {}", isAllowed);
             if (isAllowed) {
                 // 허용 url이 맞다면 그냥 통과~
                 return chain.filter(exchange);
@@ -91,6 +118,7 @@ public class AuthorizationHeaderFilter
 
     private Claims validateJwt(String token) {
         try {
+            // jjwt 0.11.x API 사용 (SecretKey 타입으로 보안 강화)
             return Jwts.parserBuilder()
                     .setSigningKey(secretKey)
                     .build()

@@ -1,6 +1,7 @@
 package com.ovengers.chatservice.mongodb.config;
 
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.messaging.simp.config.MessageBrokerRegistry;
 import org.springframework.web.socket.config.annotation.*;
@@ -12,6 +13,9 @@ public class WebSocketStompConfig implements WebSocketMessageBrokerConfigurer {
 
     private final JwtChannelInterceptor jwtChannelInterceptor;
 
+    @Value("${app.cors.allowed-origins:http://localhost:3000,http://localhost:8080}")
+    private String[] allowedOrigins;
+
     @Override
     public void configureMessageBroker(MessageBrokerRegistry registry) {
         registry.enableSimpleBroker("/sub", "/queue"); // 메시지 수신 (개인, 그룹)
@@ -21,7 +25,7 @@ public class WebSocketStompConfig implements WebSocketMessageBrokerConfigurer {
     @Override
     public void registerStompEndpoints(StompEndpointRegistry registry) {
         registry.addEndpoint("/stomp") // STOMP 프로토콜을 사용하기 위한 엔드포인트 등록 "localhost:{port}/stomp"
-                .setAllowedOriginPatterns("*") // 모든 도메인에서의 접근을 허용
+                .setAllowedOrigins(allowedOrigins) // 허용된 도메인만 접근 가능
                 .withSockJS(); // WebSocket이 지원되지 않는 브라우저에서도 대체 옵션을 제공
     }
 

@@ -1,7 +1,5 @@
 package com.ovengers.etcservice.util;
 
-import com.fasterxml.jackson.databind.DeserializationFeature;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ovengers.etcservice.dto.NotificationEvent;
 import com.ovengers.etcservice.service.NotificationService;
 import lombok.RequiredArgsConstructor;
@@ -16,7 +14,6 @@ import org.springframework.stereotype.Component;
 public class NotificationSubscriber implements MessageListener {
 
     private final NotificationService notificationService;
-    private final ObjectMapper objectMapper;
 
     @Override
     public void onMessage(Message message, byte[] pattern) {

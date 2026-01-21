@@ -1,10 +1,11 @@
 package com.ovengers.calendarservice.controller;
 
-import com.ovengers.calendarservice.common.CommonResDto;
+import com.ovengers.common.dto.CommonResDto;
 import com.ovengers.calendarservice.dto.request.DepartmentRequestDto;
 import com.ovengers.calendarservice.dto.response.DepartmentResDto;
 import com.ovengers.calendarservice.entity.Department;
 import com.ovengers.calendarservice.service.DepartmentService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -22,7 +23,7 @@ public class DepartmentController {
 
     // CREATE
     @PostMapping
-    public ResponseEntity<DepartmentResDto> createDepartment(@RequestBody DepartmentRequestDto department) {
+    public ResponseEntity<DepartmentResDto> createDepartment(@Valid @RequestBody DepartmentRequestDto department) {
         Department createdDepartment = departmentService.createDepartment(department);
         DepartmentResDto departmentResDto = new DepartmentResDto(createdDepartment);
         return ResponseEntity.ok(departmentResDto);
@@ -59,7 +60,7 @@ public class DepartmentController {
 
     //PATCH
     @PatchMapping("/{id}")
-    public ResponseEntity<DepartmentResDto> patchDepartment(@PathVariable("id") String departmentId, @RequestBody DepartmentRequestDto departmentRequestDto) {
+    public ResponseEntity<DepartmentResDto> patchDepartment(@PathVariable("id") String departmentId, @Valid @RequestBody DepartmentRequestDto departmentRequestDto) {
         DepartmentResDto updatedDepartment = departmentService.patchDepartment(departmentId, departmentRequestDto);
         return ResponseEntity.ok(updatedDepartment);
     }
